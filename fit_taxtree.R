@@ -3,6 +3,7 @@ rm(list=ls())
 library(Rcpp)
 library(RcppArmadillo)
 library(tidyverse)
+library(pROC)
 
 # load("data_try/tree_fungi.Rdata")
 # load("data_try/fungi_binary.Rdata")
@@ -35,11 +36,22 @@ for(i in 1:length(phylan)){
 idxcut = which(taxonomy$phylum %in% phyla_cut)
 fungi = otu.table[,-idxcut]
 fungi = matrix(as.numeric(fungi >0), nrow(fungi), ncol(fungi))
+# take out rows==0
+idxr = which(rowSums(fungi)==0)
+fungi=fungi[-idxr,]
 taxonomy = taxonomy[-idxcut,]
 
 param = list(max_it = 100, epsilon = 0.0001, burnin=500, Niter=2000, 
-             eps_MH = 0.03, a_gamma=10, b_gamma=1/4)
+             eps_MH = 0.05, a_gamma=10, b_gamma=1/4)
 # param = list(max_it = 100, epsilon = 0.0001)
 
-fit_taxonomic = Ltaxa1(fungi, tree_fungi, param)
-fit_taxonomic = Ltaxa(fungi, tree_fungi, param)
+#fit_taxonomic = Ltaxa1_int(fungi, taxonomy, param)
+fit_taxonomic = Ltaxa_int(fungi, taxonomy, param)
+
+prob_fit = pnorm(fit_taxonomic[[6]][1,])
+auc_all= rep(0, ncol(fungi))
+for(i in 1:length(auc_all)){
+  auc_all[i] = auc(fungi[,i], rep(prob_fit[i], nrow(fungi)))
+}
+summary(auc_all)
+auc(fungi[1:10,i], rep(prob_fit[i], 10))

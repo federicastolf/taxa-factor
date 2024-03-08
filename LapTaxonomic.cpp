@@ -40,6 +40,7 @@ arma::vec vec_beta_laplace(arma::vec y, double gamma, double alpha_l1j, int p, i
     double u = res(0);
     H = res(1);
     double err = -u/H; 
+    err = pow(err,2);
     if(err<epsilon){
       break;
     }
