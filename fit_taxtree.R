@@ -5,24 +5,18 @@ library(RcppArmadillo)
 library(tidyverse)
 library(pROC)
 
-# load("data_try/tree_fungi.Rdata")
-# load("data_try/fungi_binary.Rdata")
+
 load("/Users/stolffederica/Library/CloudStorage/Dropbox/dark taxa/code/fungi_data/allData_clim_trait.Rdata")
 source("function_fungi.R")
 source("Laplace_taxa.R")
-sourceCpp("LapTaxonomic.cpp")
+# sourceCpp("LapTaxonomic.cpp") # only-intercept model
+# sourceCpp("LapTaxonomic_cov.cpp") # probit regregression model
 
-# tree_fungi = tree_fungi[,2:7]
+
+####---------------------#### prepare the data ####----------------####
 taxonomy = taxonomy[,4:9]
-# nunk = nrow(tree_fungi[tree_fungi$Species=="unk",])
-# lab = rep(0,nunk)
-# for(i in 1:length(lab)){
-#   lab[i] = paste0("unk",i) 
-# }
-# idxunk = which(tree_fungi$Species=="unk")
-# tree_fungi$Species[idxunk] = lab
 
-#--# drop the columns that have only one child structure from phylum to species #--#
+## drop the columns that have only one child structure from phylum to species 
 phylan = as.character(taxonomy$phylum)
 phyla_cut = rep(0,155)
 j=1
@@ -36,11 +30,25 @@ for(i in 1:length(phylan)){
 idxcut = which(taxonomy$phylum %in% phyla_cut)
 fungi = otu.table[,-idxcut]
 fungi = matrix(as.numeric(fungi >0), nrow(fungi), ncol(fungi))
-# take out rows==0
-idxr = which(rowSums(fungi)==0)
-fungi=fungi[-idxr,]
 taxonomy = taxonomy[-idxcut,]
 
+## define model matrix X
+Xfungi = data.frame(temperature = meta$temp.mean, temperature2 = meta$temp.mean^2,
+                    seqdepth = log(meta$numspikes+meta$numnonspikes),
+                    lat = meta$lat/100, seasonality1 = sin(2*pi*meta$yday/365),
+                    seasonality2 = cos(2*pi*meta$yday/365))
+Xfungi = cbind.data.frame(Xfungi, interaction1 = Xfungi$lat*Xfungi$seasonality1, 
+                          interaction2 = Xfungi$lat*Xfungi$seasonality2)
+
+## drop rows with all 0
+# idxr = which(rowSums(fungi)==0)
+# fungi=fungi[-idxr,]
+# in case you have to do also for covariate! 
+
+
+
+
+###--------------------### fit the models ###-----------------------###
 param = list(max_it = 100, epsilon = 0.0001, burnin=500, Niter=2000, 
              eps_MH = 0.05, a_gamma=10, b_gamma=1/4)
 # param = list(max_it = 100, epsilon = 0.0001)
@@ -48,6 +56,9 @@ param = list(max_it = 100, epsilon = 0.0001, burnin=500, Niter=2000,
 #fit_taxonomic = Ltaxa1_int(fungi, taxonomy, param)
 fit_taxonomic = Ltaxa_int(fungi, taxonomy, param)
 
+
+
+###----------------### validate results - AUC ###-------------------###
 prob_fit = pnorm(fit_taxonomic[[6]][1,])
 auc_all= rep(0, ncol(fungi))
 for(i in 1:length(auc_all)){

@@ -29,6 +29,6 @@ dad_tree = function(Y, taxonomy, l){
   colnames(data_taxa) = data_taxa[1,]
   data_taxa = data_taxa[-1,]
   data_taxa= as.data.frame(sapply(data_taxa, as.numeric))
-  data_taxa
+  return(list("data"=data_taxa, "taxa_onechild" = ddrop$ct))
 }
 
