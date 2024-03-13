@@ -9,9 +9,9 @@ library(pROC)
 load("/Users/stolffederica/Library/CloudStorage/Dropbox/dark taxa/code/fungi_data/allData_clim_trait.Rdata")
 source("function_fungi.R")
 source("Laplace_taxa.R")
-# sourceCpp("LapTaxonomic.cpp") # only-intercept model
-# sourceCpp("LapTaxonomic_cov.cpp") # probit regregression model
-
+#sourceCpp("LapTaxonomic.cpp") # only-intercept model
+sourceCpp("LapTaxonomic_cov.cpp") # probit regregression model
+#sourceCpp("Lcov.cpp")
 
 ####---------------------#### prepare the data ####----------------####
 taxonomy = taxonomy[,4:9]
@@ -33,7 +33,8 @@ fungi = matrix(as.numeric(fungi >0), nrow(fungi), ncol(fungi))
 taxonomy = taxonomy[-idxcut,]
 
 ## define model matrix X
-Xfungi = data.frame(temperature = meta$temp.mean, temperature2 = meta$temp.mean^2,
+Xfungi = data.frame(intercept = rep(1, nrow(fungi)), temperature = meta$temp.mean,
+                    temperature2 = meta$temp.mean^2,
                     seqdepth = log(meta$numspikes+meta$numnonspikes),
                     lat = meta$lat/100, seasonality1 = sin(2*pi*meta$yday/365),
                     seasonality2 = cos(2*pi*meta$yday/365))
@@ -43,19 +44,28 @@ Xfungi = cbind.data.frame(Xfungi, interaction1 = Xfungi$lat*Xfungi$seasonality1,
 ## drop rows with all 0
 # idxr = which(rowSums(fungi)==0)
 # fungi=fungi[-idxr,]
-# in case you have to do also for covariate! 
+# # in case you have to do also for covariate! 
+# Xfungi = Xfungi[-idxr,]
 
-
-
+## drop rows with seqdepth<10000
+idxs = which(exp(Xfungi$seqdepth)<10000)
+Xfungi = Xfungi[-idxs,]
+fungi = fungi[-idxs,]
 
 ###--------------------### fit the models ###-----------------------###
 param = list(max_it = 100, epsilon = 0.0001, burnin=500, Niter=2000, 
-             eps_MH = 0.05, a_gamma=10, b_gamma=1/4)
+             eps_MH = 0.05, a_gamma=10, b_gamma=1/4, prior_var=15)
 # param = list(max_it = 100, epsilon = 0.0001)
+
+fitcov = Ltaxa(fungi, as.matrix(Xfungi), taxonomy, param)
 
 #fit_taxonomic = Ltaxa1_int(fungi, taxonomy, param)
 fit_taxonomic = Ltaxa_int(fungi, taxonomy, param)
 
+
+## prove 
+res1 = marginal_probit(as.matrix(Yl), as.matrix(Xfungi), gamma_hat, alphal, betal, 
+                       param$prior_var, param$epsilon, param$max_it)
 
 
 ###----------------### validate results - AUC ###-------------------###

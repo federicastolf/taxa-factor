@@ -1,4 +1,7 @@
 
+###--------### Laplace approximation for intercept-only model ###-------###
+###########################################################################
+
 Ltaxa_int = function(Y, taxonomy, param){
   L = ncol(taxonomy)
   taxa_names = names(taxonomy)
@@ -95,7 +98,10 @@ Ltaxa_int1 = function(Y, taxonomy, param){
 }
 
 
-Ltaxa_int = function(Y, taxonomy, param){
+###--------### Laplace approximation for regression model ###-------###
+###########################################################################
+
+Ltaxa = function(Y, X, taxonomy, param){
   L = ncol(taxonomy)
   taxa_names = names(taxonomy)
   results = vector("list", L) # each elements is a matrix 2xp_l
@@ -103,23 +109,19 @@ Ltaxa_int = function(Y, taxonomy, param){
   for(l in 1:L){
     Yl = data_tree(Y, taxonomy[,taxa_names[l]])
     if(l==1){
-      alphal = rep(0, ncol(Yl))
-      # gamma_samp = emp_bayes(as.matrix(Yl), alphal, param$a_gamma, param$b_gamma, 
-      #                        param$max_it, param$epsilon, param$Niter, 
-      #                        param$burnin, param$eps_MH)
-      # # apply Laplace on Yl
-      # gamma_hat = mean(exp(gamma_samp))
+      betal = matrix(0, ncol(X), ncol(Yl))
       gamma_hat = mean(rowSums(Yl))
-      results[[l]] = marginal_probit(as.matrix(Yl), gamma_hat, alphal, param$epsilon, param$max_it)
+      results[[l]] = marginal_probit(as.matrix(Yl), X, gamma_hat, betal, 
+                                     param$prior_var, param$epsilon, param$max_it)
     }
     else{
       lb = unique(taxonomy[,taxa_names[l-1]])
-      #alphal = rep(0, ncol(Yl))
-      alphal = NULL
+      betal = NULL
       for(i in 1:length(lb)){
         t1 = taxonomy[taxonomy[,l-1] == lb[i],l]
         nchilds = length(unique(t1))
-        alphal = c(alphal, rep(results[[l-1]][1,i], nchilds))
+        bcol = rep(results[[l-1]][1:(NCOL(X)),i], nchilds)
+        betal = cbind(betal, matrix(bcol, (NCOL(X)), nchilds))
       }
       # apply Laplace on Yl
       # gamma_samp = emp_bayes(as.matrix(Yl), alphal, param$a_gamma, param$b_gamma, 
@@ -127,7 +129,8 @@ Ltaxa_int = function(Y, taxonomy, param){
       #                        param$burnin, param$eps_MH)
       # gamma_hat = mean(exp(gamma_samp))
       gamma_hat = mean(rowSums(Yl))
-      results[[l]] = marginal_probit(as.matrix(Yl), gamma_hat, alphal, param$epsilon, param$max_it)
+      results[[l]] =  marginal_probit(as.matrix(Yl), X, gamma_hat, betal, 
+                                      param$prior_var, param$epsilon, param$max_it)
     }
     cat("layer",l,"\n")
   }
