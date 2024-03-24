@@ -8,10 +8,10 @@ library(pROC)
 
 load("/Users/stolffederica/Library/CloudStorage/Dropbox/dark taxa/code/fungi_data/allData_clim_trait.Rdata")
 source("function_fungi.R")
-source("Laplace_taxa.R")
+# source("Laplace_taxa.R")
 #sourceCpp("LapTaxonomic.cpp") # only-intercept model
 sourceCpp("LapTaxonomic_cov.cpp") # probit regregression model
-#sourceCpp("Lcov.cpp")
+#sourceCpp("bigMVPmarginal.cpp") # bigMVP marginal
 
 ####---------------------#### prepare the data ####----------------####
 taxonomy = taxonomy[,4:9]
@@ -53,9 +53,12 @@ Xfungi = Xfungi[-idxs,]
 fungi = fungi[-idxs,]
 
 ###--------------------### fit the models ###-----------------------###
-param = list(max_it = 100, epsilon = 0.0001, burnin=500, Niter=2000, 
-             eps_MH = 0.05, a_gamma=10, b_gamma=1/4, prior_var=15)
-# param = list(max_it = 100, epsilon = 0.0001)
+q = ncol(Xfungi)
+param = list(max_it = 100, epsilon = 0.0001,
+             a0 = 1/2, b0 = 2, nu0 = rep(0, q-1), Psi0=diag(q-1), atheta = 3, 
+             btheta = 2,  burnin = 0, nmcmc = 10)
+# param = list(max_it = 100, epsilon = 0.0001, burnin=500, Niter=2000, 
+#              eps_MH = 0.05, a_gamma=10, b_gamma=1/4, prior_var=15)
 
 fitcov = Ltaxa(fungi, as.matrix(Xfungi), taxonomy, param)
 
@@ -66,6 +69,9 @@ fit_taxonomic = Ltaxa_int(fungi, taxonomy, param)
 ## prove 
 res1 = marginal_probit(as.matrix(Yl), as.matrix(Xfungi), gamma_hat, alphal, betal, 
                        param$prior_var, param$epsilon, param$max_it)
+
+
+
 
 
 ###----------------### validate results - AUC ###-------------------###

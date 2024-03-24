@@ -7,7 +7,7 @@ library(pROC)
 
 load("/Users/stolffederica/Library/CloudStorage/Dropbox/dark taxa/code/fungi_data/allData_clim_trait.Rdata")
 source("function_fungi.R")
-sourceCpp("Lcov.cpp")
+sourceCpp("bigMVPmarginal.cpp")
 
 Y = matrix(as.numeric(otu.table >0), nrow(otu.table), ncol(otu.table))
 

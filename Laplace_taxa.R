@@ -111,8 +111,11 @@ Ltaxa = function(Y, X, taxonomy, param){
     if(l==1){
       betal = matrix(0, ncol(X), ncol(Yl))
       gamma_hat = mean(rowSums(Yl))
+      emp0 = emp_bayes0(as.matrix(Yl), X, gamma_hat, param$nu0, param$Psi0, param$a0, param$b0, 
+                        param$epsilon, param$max_it, param$nmcmc ,param$burnin)
+      
       results[[l]] = marginal_probit(as.matrix(Yl), X, gamma_hat, betal, 
-                                     param$prior_var, param$epsilon, param$max_it)
+                                     15, param$epsilon, param$max_it)
     }
     else{
       lb = unique(taxonomy[,taxa_names[l-1]])
@@ -136,3 +139,7 @@ Ltaxa = function(Y, X, taxonomy, param){
   }
   return(results)
 }
+
+##### prova
+emp0 = emp_bayes0(Y, X, gamma_hat, param$nu0, param$Psi0, param$a0, param$b0, 
+           param$epsilon, param$max_it, param$nmcmc ,param$burnin)
